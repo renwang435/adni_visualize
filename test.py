@@ -10,12 +10,4 @@ if __name__ == '__main__':
     # print(nifti_data)
     # sys.exit(1)
     #
-    count = 0
-    for i in range(len(nifti_data)):
-        for j in range(len(nifti_data[i])):
-            for k in range(len(nifti_data[i][j])):
-                # if (nifti_data[i][j][k] > 0 and nifti_data[i][j][k] <= 1):
-                if (nifti_data[i][j][k] > 1):
-                    count += 1
-
-    print(count)
+    print(nifti_data.shape)
