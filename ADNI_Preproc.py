@@ -21,7 +21,7 @@ write_dir = 'preprocessed_data'
 if not os.path.exists(write_dir):
     os.makedirs(write_dir)
 
-adni_files = glob.glob(data_dir + r'\*\*\*\*\*.nii')
+adni_files = glob.glob(data_dir + r'\*\MPR____N3__Scaled\*\*\*.nii')
 i = 0
 progress = 0
 total = len(adni_files)

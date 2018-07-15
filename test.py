@@ -3,11 +3,16 @@
 import nibabel as nib
 import numpy as np
 import sys
+import pickle
 
 if __name__ == '__main__':
-    nifti_data = nib.load('ADNI_136_S_0429_MR_MPR____N3__Scaled_Br_20071127184003417_S33730_I83549.nii')
-    nifti_data = np.array(nifti_data.get_data())
-    # print(nifti_data)
-    # sys.exit(1)
-    #
-    print(nifti_data.shape)
+    with open('file_num_to_tag.txt', 'rb') as fp:
+        num_to_tag = pickle.load(fp)
+
+    vals = np.array(list(num_to_tag.values()))
+    # print(vals)
+    print(len(np.where(vals == 0)[0]))
+    print(len(np.where(vals == 1)[0]))
+    print(len(np.where(vals == 2)[0]))
+
+    # print(num_to_tag)

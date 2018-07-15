@@ -1,5 +1,6 @@
 import numpy as np
 import keras
+import sys
 
 # First arg: np.arange over all training examples, segmented into train, validation and test ests
 # Second arg: Dictionary mapping examples to their corresponding label
@@ -50,7 +51,12 @@ class DataGenerator(keras.utils.Sequence):
         # Generate data
         for i, ID in enumerate(list_IDs_temp):
             # Store sample
-            X[i,] = np.load('preprocessed_data/' + ID + '.npy')
+            sample = np.load('preprocessed_data/' + str(ID) + '.npy')
+            sample = np.reshape(sample, (256, 256, 170, 1))
+            # print(np.shape(sample))
+            # print(ID)
+            # sys.exit(1)
+            X[i, ] = sample
 
             # Store class
             y[i] = self.labels[ID]
