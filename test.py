@@ -2,17 +2,18 @@
 
 import nibabel as nib
 import numpy as np
+import os
 import sys
 import pickle
 
+parent_dir = 'temp'
+labels = ['AD', 'CN', 'MCI']
+
 if __name__ == '__main__':
-    with open('file_num_to_tag.txt', 'rb') as fp:
-        num_to_tag = pickle.load(fp)
+    for i in range(815):
+        test = np.load('data/training_examples/' + str(i) + '.npy')
+        if (test.shape != (96, 112, 96)):
+            print(i)
 
-    vals = np.array(list(num_to_tag.values()))
-    # print(vals)
-    print(len(np.where(vals == 0)[0]))
-    print(len(np.where(vals == 1)[0]))
-    print(len(np.where(vals == 2)[0]))
-
-    # print(num_to_tag)
+    # partition = np.arange(0, 815)
+    # print(partition)

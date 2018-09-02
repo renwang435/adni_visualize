@@ -7,12 +7,11 @@ import sys
 
 class DataGenerator(keras.utils.Sequence):
     'Generates data for Keras'
-    def __init__(self, list_IDs, labels, batch_size=32, dim=(32,32,32), n_channels=1,
+    def __init__(self, list_IDs, batch_size=32, dim=(32,32,32), n_channels=1,
                  n_classes=10, shuffle=True):
         'Initialization'
         self.dim = dim
         self.batch_size = batch_size
-        self.labels = labels
         self.list_IDs = list_IDs
         self.n_channels = n_channels
         self.n_classes = n_classes
@@ -32,9 +31,9 @@ class DataGenerator(keras.utils.Sequence):
         list_IDs_temp = [self.list_IDs[k] for k in indexes]
 
         # Generate data
-        X, y = self.__data_generation(list_IDs_temp)
+        X = self.__data_generation(list_IDs_temp)
 
-        return X, y
+        return X, X
 
     def on_epoch_end(self):
         'Updates indexes after each epoch'
@@ -46,19 +45,12 @@ class DataGenerator(keras.utils.Sequence):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
         # Initialization
         X = np.empty((self.batch_size, *self.dim, self.n_channels))
-        y = np.empty((self.batch_size), dtype=int)
 
         # Generate data
         for i, ID in enumerate(list_IDs_temp):
             # Store sample
-            sample = np.load('preprocessed_data/' + str(ID) + '.npy')
-            sample = np.reshape(sample, (256, 256, 170, 1))
-            # print(np.shape(sample))
-            # print(ID)
-            # sys.exit(1)
-            X[i, ] = sample
+            sample = np.load('data/training_examples/' + str(ID) + '.npy')
+            sample = np.reshape(sample, (*self.dim, self.n_channels))
+            X[i] = sample
 
-            # Store class
-            y[i] = self.labels[ID]
-
-        return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
+        return X
