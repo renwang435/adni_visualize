@@ -2,24 +2,30 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import glob
+import itertools
 import multiprocessing as mp
 import os
-import sys
 import pickle
 
+import matplotlib.pyplot as plt
 import numpy as np
 from keras import backend as K
-from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.layers import Conv2D, MaxPool2D, UpSampling2D, Flatten, Lambda
 from keras.layers import Dense, Input, Dropout, BatchNormalization
 from keras.layers import Reshape
 from keras.losses import mse
 from keras.models import Model
-from keras.utils import plot_model
-from keras.optimizers import RMSprop, Adam
-from sklearn.model_selection import train_test_split
+from keras.optimizers import Adam
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 
-from VAEDataGenerator import DataGenerator
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+home = str(os.path.expanduser("~"))
+master_dir = os.path.join(home, 'cmt/dataMining/impact_representation/separated_trips')
+
 
 def swish(affine):
     return affine * K.sigmoid(affine)
@@ -178,6 +184,79 @@ def decoder_arch(latent_dim):
 
     return latent_inputs, outputs
 
+def retrieve_classes(X, loaded_examples, num_to_label):
+    list_of_classes = []
+    for example in loaded_examples:
+        file_num = str(example).split('\\')[-1].split('.')[0]
+        list_of_classes.append(num_to_label[int(file_num)])
+
+    return np.array(list_of_classes)
+
+
+# Show dataset images with T-sne projection of latent space encoding
+def computeTSNEProjectionOfLatentSpace(X, loaded_examples, model, num_to_label,
+                                       save=True, display=True):
+    if save:
+        # Compute latent space representation
+        print("Computing latent space projections...")
+        # Encoder returns 3 values, VAE returns 1 value
+        try:
+            _, _, X_encoded = model.predict(X)
+        except:
+            print('Assuming one output only from model')
+            X_encoded = model.predict(X)
+
+        # PCA and TSNE expect 2D input
+        X_encoded = X_encoded.reshape((np.shape(X_encoded)[0], -1))
+
+        # Compute t-SNE embedding of latent space
+        # Intermediate dimensionality reduction with PCA first
+        print('Computing TSNE...')
+        tsne = TSNE(n_components=2, verbose=1, random_state=0, init='pca',
+                    perplexity=40, n_iter=1000)
+        X_tsne = tsne.fit_transform(X_encoded)
+        np.save('X_tsne', X_tsne)
+    else:
+        print('Loading previously computed tsne vectors...')
+        X_tsne = np.load('X_tsne.npy')
+
+    color_map = retrieve_classes(X, loaded_examples, num_to_label)
+    colors = []
+    for i in color_map:
+        colors.append(i)
+    colors = np.array(colors)
+
+    scatter_x = X_tsne[:, 0]
+    scatter_y = X_tsne[:, 1]
+    cdict = {0: 'red', 1: 'yellow', 2: 'green'}
+    labeldict = {0: 'AD', 1: 'MCI', 2: 'CN'}
+
+    # Plot images according to t-sne embedding
+    if display:
+        print("Plotting t-SNE visualization...")
+        fig, ax = plt.subplots()
+        for c in np.unique(colors):
+            ix = np.where(colors == c)
+            ax.scatter(scatter_x[ix], scatter_y[ix], c=cdict[c], label=labeldict[c])
+        ax.legend()
+        plt.show()
+    else:
+        print("Saving t-SNE visualization in PNG format...")
+        fig, ax = plt.subplots()
+        for c in np.unique(colors):
+            ix = np.where(colors == c)
+            ax.scatter(scatter_x[ix], scatter_y[ix], c=cdict[c], label=labeldict[c])
+        ax.legend()
+        plt.savefig('tsne_no_encoding.png')
+
+def load_examples(file, inputs_for_tsne):
+    sample = np.array(np.load(file))
+    input = np.transpose(sample)
+    inputs_for_tsne[file] = input
+
+def load_examples_star(all_args):
+    return load_examples(*all_args)
+
 if __name__ == '__main__':
     params = {'batch_size': 32,
               'dim': (96, 112),
@@ -187,76 +266,25 @@ if __name__ == '__main__':
               }
     latent_dim = 15
     epochs = 200
+    num_training = 815
     use_mp = True
     workers = mp.cpu_count()
     with open('./file_num_to_tag.txt', 'rb') as fp:
         num_to_label = pickle.load(fp)
-
-    home = str(os.path.expanduser("~"))
-    master_dir = os.path.join(home, 'cmt/dataMining/impact_representation')
-    data_dir = os.path.join(master_dir, 'separated_trips')
-    num_training = 815
 
     # VAE model = encoder + decoder
     # build encoder model
     inputs, z_mean, z_log_var, z, shape = encoder_arch((*params['dim'], params['n_channels']))
     # instantiate encoder model
     encoder = Model(inputs, [z_mean, z_log_var, z], name='encoder')
-    print(encoder.summary())
-    plot_model(encoder, to_file='vae_cnn_encoder.png', show_shapes=True)
 
     # build decoder model
     latent_inputs, outputs = decoder_arch(latent_dim)
     # instantiate decoder model
     decoder = Model(latent_inputs, outputs, name='decoder')
-    print(decoder.summary())
-    plot_model(decoder, to_file='vae_cnn_decoder.png', show_shapes=True)
 
     # instantiate VAE model
     outputs = decoder(encoder(inputs)[2])
-    vae = Model(inputs, outputs, name='vae')
-
-    # Compile model
-    custom_opt = Adam(lr=0.000027, clipvalue=0.5)
-    vae.compile(optimizer=custom_opt, loss=vae_loss, metrics=[recon_loss,
-                                                                  kl_loss])
-    print(vae.summary())
-    plot_model(vae, to_file='vae_cnn.png', show_shapes=True)
-
-    # Datasets
-    partition = np.arange(0, num_training)
-    X_train, X_test, _, _ = train_test_split(partition,
-                                             partition,
-                                             test_size=0.2,
-                                             random_state=42)
-
-    X_val, X_test, _, _ = train_test_split(X_test,
-                                           X_test,
-                                           test_size=0.5,
-                                           random_state=42)
-
-    # Generators
-    training_generator = DataGenerator(X_train, **params)
-    validation_generator = DataGenerator(X_val, **params)
-    evaluation_generator = DataGenerator(X_test, **params)
-
-    # Callbacks
-    checkpointer = ModelCheckpoint(filepath='cvae_bestmodel.h5',
-                                   monitor='val_loss',
-                                   save_best_only=True,
-                                   verbose=1)
-    early_stopper = EarlyStopping(monitor='val_loss',
-                                  patience=10,
-                                  verbose=1)
-
-    # Train model on dataset
-    autoencoder_train_history = vae.fit_generator(generator=training_generator,
-                                                  validation_data=validation_generator,
-                                                  epochs=epochs,
-                                                  use_multiprocessing=use_mp,
-                                                  verbose=1,
-                                                  callbacks=[checkpointer, early_stopper],
-                                                  workers=1)
 
     # Testing
     vae = Model(inputs, outputs, name='vae')
@@ -264,14 +292,35 @@ if __name__ == '__main__':
     vae.load_weights('cvae_bestmodel.h5')
     # Recompile model
     print('compiling model')
+    custom_opt = Adam(lr=0.000027, clipvalue=0.5)
     vae.compile(optimizer=custom_opt, loss=vae_loss, metrics=[recon_loss,
                                                                   kl_loss])
 
-    tresults = vae.evaluate_generator(generator=evaluation_generator,
-                                      workers=1,
-                                      use_multiprocessing=use_mp,
-                                      verbose=1)
-    print('Overall loss: ' + str(tresults[0]))
+    data_dir = 'data/training_examples'
+    segments = glob.glob(data_dir + '/*.npy')[:num_training]
+    inputs_for_tsne = mp.Manager().dict()
+    print('starting tsne transformation on ' + str(len(segments)) + ' encodings')
 
-    with open("./cvae_training_dump.txt", "wb") as fp:  # Pickling
-        pickle.dump(autoencoder_train_history.history, fp, protocol=2)
+    # num_threads = mp.cpu_count()
+    # pool = mp.Pool(processes=num_threads)
+    # pool.map_async(load_examples_star,
+    #                zip(segments,
+    #                    itertools.repeat(inputs_for_tsne)))
+    # pool.close()
+    # pool.join()
+    #
+    # dict_segments = dict(inputs_for_tsne)
+    #
+    # loaded_values = list(dict_segments.values())
+    # loaded_examples = list(dict_segments.keys())
+    # loaded_values = np.array(loaded_values)
+    # loaded_examples = np.array(loaded_examples)
+    #
+    # np.save('loaded_values_subset.npy', loaded_values)
+    # np.save('loaded_examples_subset.npy', loaded_examples)
+    loaded_values = np.load('loaded_values_subset.npy')
+    loaded_examples = np.load('loaded_examples_subset.npy')
+    print('Done loading ' + str(len(loaded_values)) + ' examples')
+
+    computeTSNEProjectionOfLatentSpace(loaded_values, loaded_examples, encoder, num_to_label,
+                                       save=False, display=False)

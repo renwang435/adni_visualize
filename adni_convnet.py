@@ -152,7 +152,7 @@ if __name__ == '__main__':
                   metrics=['accuracy'])
 
     print(model.summary())
-    # plot_model(model, to_file='cnn_arch.png', show_shapes=True)
+    plot_model(model, to_file='cnn_arch.png', show_shapes=True)
 
     train_history = model.fit_generator(generator=training_generator,
                                         validation_data=validation_generator,
@@ -163,7 +163,7 @@ if __name__ == '__main__':
                                         workers=1)
 
     # Testing
-    model = cnn_arch()
+    model = cnn_arch((*params['dim'], params['n_channels']))
     # Load best weights
     model.load_weights('bestmodel_cnn.h5')
     # Recompile model
