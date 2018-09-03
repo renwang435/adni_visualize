@@ -3,7 +3,6 @@ from __future__ import division
 from __future__ import print_function
 
 import glob
-import itertools
 import multiprocessing as mp
 import os
 import pickle
@@ -17,7 +16,6 @@ from keras.layers import Reshape
 from keras.losses import mse
 from keras.models import Model
 from keras.optimizers import Adam
-from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
