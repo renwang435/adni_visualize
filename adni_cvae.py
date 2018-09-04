@@ -192,9 +192,6 @@ if __name__ == '__main__':
     with open('./file_num_to_tag.txt', 'rb') as fp:
         num_to_label = pickle.load(fp)
 
-    home = str(os.path.expanduser("~"))
-    master_dir = os.path.join(home, 'cmt/dataMining/impact_representation')
-    data_dir = os.path.join(master_dir, 'separated_trips')
     num_training = 815
 
     # VAE model = encoder + decoder
