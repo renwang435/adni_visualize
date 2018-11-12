@@ -1,6 +1,6 @@
 # adni_visualize
 
-The aim to utlize image datasets from the Alzheimer's Disease Neuroimaging Initiative (ADNI) in various neural network learning tasks and investigate learned filter morphologies at each layer and overall manifolds. Images fall into one of three categories:cognitively normal (CN), mild cognitive impairment (MCI) and Alzheimer's disease (AD).
+The aim to utlize image datasets from the Alzheimer's Disease Neuroimaging Initiative (ADNI) in various neural network learning tasks and investigate learned filter morphologies at each layer and overall manifolds. Images fall into one of three categories: cognitively normal (CN), mild cognitive impairment (MCI) and Alzheimer's disease (AD).
 
 ## architectures
 Images depicting various architectures experimented with.
